@@ -1,5 +1,5 @@
-import { ArrowLeft, Printer, User } from 'lucide-react';
-import React from 'react';
+import { ArrowLeft, Printer, Search, User, X } from 'lucide-react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
 interface PrintWrapperProps {
@@ -21,6 +21,14 @@ export const PrintWrapper: React.FC<PrintWrapperProps> = ({
     getStudentById
   } = useApp();
 
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredStudents = students.filter(s =>
+    s.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.nisn && s.nisn.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const handlePrint = () => {
     window.print();
   };
@@ -34,7 +42,7 @@ export const PrintWrapper: React.FC<PrintWrapperProps> = ({
         <div className="flex items-center space-x-3 w-full sm:w-auto">
           <button
             onClick={() => setActiveView('dashboard')}
-            className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 border border-slate-700 transition cursor-pointer"
+            className="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 border border-slate-700 transition cursor-pointer shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Kembali ke Menu Utama</span>
@@ -46,27 +54,65 @@ export const PrintWrapper: React.FC<PrintWrapperProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
           {showStudentPicker && currentStudent && (
-            <div className="flex items-center space-x-2">
-              <User className="w-4 h-4 text-slate-400" />
-              <select
-                value={currentStudent.id}
-                onChange={e => setSelectedStudentId(e.target.value)}
-                className="bg-slate-800 text-white border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.nis} - {s.namaLengkap}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* Quick Search Input */}
+              <div className="relative min-w-[160px] sm:w-48">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Cari nama / NIS..."
+                  value={searchQuery}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    const matches = students.filter(s =>
+                      s.namaLengkap.toLowerCase().includes(val.toLowerCase()) ||
+                      s.nis.toLowerCase().includes(val.toLowerCase())
+                    );
+                    if (matches.length > 0 && !matches.some(m => m.id === selectedStudentId)) {
+                      setSelectedStudentId(matches[0].id);
+                    }
+                  }}
+                  className="w-full pl-8 pr-7 py-1.5 bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-2 text-slate-400 hover:text-white p-0.5 rounded-full"
+                    title="Bersihkan"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Student Dropdown */}
+              <div className="flex items-center space-x-1.5">
+                <User className="w-4 h-4 text-slate-400 shrink-0" />
+                <select
+                  value={currentStudent.id}
+                  onChange={e => setSelectedStudentId(e.target.value)}
+                  className="bg-slate-800 text-white border border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 max-w-[200px] sm:max-w-[260px] truncate"
+                >
+                  {filteredStudents.length === 0 ? (
+                    <option value="" disabled>Siswa tidak ditemukan</option>
+                  ) : (
+                    filteredStudents.map((s, idx) => (
+                      <option key={`${s.id}-${idx}`} value={s.id}>
+                        {s.nis} - {s.namaLengkap}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
           )}
 
           <button
             onClick={handlePrint}
-            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center space-x-1.5 shadow-lg transition cursor-pointer"
+            className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center space-x-1.5 shadow-lg transition cursor-pointer shrink-0"
           >
             <Printer className="w-4 h-4" />
             <span>Cetak / Export PDF</span>

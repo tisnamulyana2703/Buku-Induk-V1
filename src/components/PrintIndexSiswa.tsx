@@ -1,12 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PrintWrapper } from './PrintWrapper';
 import { useApp } from '../context/AppContext';
 import { formatIndonesianDate } from '../utils/dateUtils';
+import { Search, X } from 'lucide-react';
 
 export const PrintIndexSiswa: React.FC = () => {
   const { schoolData, students, academicYear } = useApp();
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const sortedStudents = [...students].sort((a, b) =>
+  const filteredStudents = students.filter(s =>
+    s.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.nisn && s.nisn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (s.diterimaDiKelas && String(s.diterimaDiKelas).toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const sortedStudents = [...filteredStudents].sort((a, b) =>
     a.namaLengkap.localeCompare(b.namaLengkap)
   );
 
@@ -17,6 +26,34 @@ export const PrintIndexSiswa: React.FC = () => {
     <PrintWrapper documentTitle="INDEX SISWA / DAFTAR ABJAD INDUK SISWA" showStudentPicker={false}>
       <div className="font-sans text-xs space-y-4 text-slate-900">
         
+        {/* Screen-only Search Input */}
+        <div className="print:hidden bg-slate-100 p-3 rounded-xl border border-slate-300 flex items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              placeholder="Cari nama / NIS / NISN / Kelas..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                title="Bersihkan"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <span className="text-xs font-bold text-emerald-700">
+              Ditemukan {sortedStudents.length} dari {students.length} siswa
+            </span>
+          )}
+        </div>
+
         {/* Kop Surat Header */}
         <div className="border-b-2 border-black pb-3 text-center space-y-1">
           <h1 className="font-black text-xl uppercase tracking-wider text-black">{schoolData.namaSekolah}</h1>
@@ -46,7 +83,7 @@ export const PrintIndexSiswa: React.FC = () => {
           </thead>
           <tbody>
             {sortedStudents.map((s, idx) => (
-              <tr key={s.id} className="border-b border-black text-center hover:bg-slate-50">
+              <tr key={`${s.id}-${idx}`} className="border-b border-black text-center hover:bg-slate-50">
                 <td className="border border-black p-1.5 font-bold">{idx + 1}</td>
                 <td className="border border-black p-1.5 font-bold">{s.nis}</td>
                 <td className="border border-black p-1.5 text-[11px]">{s.nisn}</td>

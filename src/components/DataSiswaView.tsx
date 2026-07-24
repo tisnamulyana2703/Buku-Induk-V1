@@ -7,7 +7,7 @@ import { ExcelImportModal } from './ExcelImportModal';
 import { StudentDetail } from '../types';
 
 export const DataSiswaView: React.FC = () => {
-  const { students, addStudent, updateStudent, deleteStudent, setSelectedStudentId, setActiveView, rombelList } = useApp();
+  const { students, addStudent, addStudentsBulk, updateStudent, deleteStudent, setSelectedStudentId, setActiveView, rombelList } = useApp();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Lulus' | 'Pindah' | 'Keluar'>('Semua');
@@ -119,9 +119,7 @@ export const DataSiswaView: React.FC = () => {
   };
 
   const handleBulkExcelImport = (importedList: Omit<StudentDetail, 'id'>[]) => {
-    importedList.forEach(s => {
-      addStudent(s);
-    });
+    addStudentsBulk(importedList);
     alert(`Berhasil mengimpor ${importedList.length} siswa ke dalam Aplikasi Buku Induk!`);
   };
 
@@ -300,7 +298,7 @@ export const DataSiswaView: React.FC = () => {
                   </tr>
                 ) : (
                   filteredStudents.map((s, idx) => (
-                    <tr key={s.id} className="hover:bg-slate-50 transition">
+                    <tr key={`${s.id}-${idx}`} className="hover:bg-slate-50 transition">
                       <td className="p-3 text-center font-bold text-slate-500">{idx + 1}</td>
                       <td className="p-3 font-mono text-xs">
                         <div className="font-bold text-emerald-900">{s.nis}</div>

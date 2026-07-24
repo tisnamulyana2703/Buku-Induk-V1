@@ -1,4 +1,4 @@
-import { CheckCircle2, Heart, Home, Save, User, Users } from 'lucide-react';
+import { CheckCircle2, Heart, Home, Save, Search, User, Users, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { Header } from './Header';
 import { useApp } from '../context/AppContext';
@@ -11,6 +11,13 @@ export const DataLengkapSiswaView: React.FC = () => {
   const [formData, setFormData] = useState<StudentDetail>(currentStudent);
   const [activeTab, setActiveTab] = useState<'identitas' | 'orangtua' | 'fisik' | 'foto'>('identitas');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredStudents = students.filter(s =>
+    s.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.nis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (s.nisn && s.nisn.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   // When selected student changes in dropdown
   const handleStudentSelect = (id: string) => {
@@ -41,21 +48,60 @@ export const DataLengkapSiswaView: React.FC = () => {
       <Header title="DATA LENGKAP SISWA (BIODATA BUKU INDUK)" />
 
       <main className="max-w-5xl mx-auto w-full p-4 sm:p-6 flex-1">
-        {/* Student Switcher Dropdown Bar */}
+        {/* Student Switcher Dropdown Bar with Search */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <User className="w-5 h-5 text-emerald-600" />
-            <label className="text-xs font-bold text-slate-700 uppercase">Pilih Siswa:</label>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center space-x-2">
+              <User className="w-5 h-5 text-emerald-600 shrink-0" />
+              <label className="text-xs font-bold text-slate-700 uppercase shrink-0">Pilih Siswa:</label>
+            </div>
+
+            {/* Quick Search Input */}
+            <div className="relative min-w-[180px] flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Cari nama / NIS..."
+                value={searchQuery}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  const matches = students.filter(s =>
+                    s.namaLengkap.toLowerCase().includes(val.toLowerCase()) ||
+                    s.nis.toLowerCase().includes(val.toLowerCase())
+                  );
+                  if (matches.length > 0 && !matches.some(m => m.id === formData.id)) {
+                    handleStudentSelect(matches[0].id);
+                  }
+                }}
+                className="w-full pl-9 pr-7 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                  title="Bersihkan"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Select Dropdown */}
             <select
               value={formData.id}
               onChange={e => handleStudentSelect(e.target.value)}
-              className="border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 sm:w-80"
+              className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 sm:w-72 truncate"
             >
-              {students.map(s => (
-                <option key={s.id} value={s.id}>
-                  {s.nis} - {s.namaLengkap} ({s.jenisKelamin})
-                </option>
-              ))}
+              {filteredStudents.length === 0 ? (
+                <option value="" disabled>Tidak ada siswa cocok</option>
+              ) : (
+                filteredStudents.map((s, idx) => (
+                  <option key={`${s.id}-${idx}`} value={s.id}>
+                    {s.nis} - {s.namaLengkap} ({s.jenisKelamin})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

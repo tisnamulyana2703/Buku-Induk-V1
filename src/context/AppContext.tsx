@@ -64,6 +64,7 @@ interface AppContextType {
 
   // Helpers
   addStudent: (student: Omit<StudentDetail, 'id'>) => void;
+  addStudentsBulk: (students: Omit<StudentDetail, 'id'>[]) => void;
   updateStudent: (student: StudentDetail) => void;
   deleteStudent: (id: string) => void;
   getStudentById: (id: string) => StudentDetail | undefined;
@@ -87,9 +88,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialAcademicYear;
   });
 
+  const sanitizeStudentsList = (rawStudents: StudentDetail[]): StudentDetail[] => {
+    if (!Array.isArray(rawStudents)) return [];
+    const seenIds = new Set<string>();
+    return rawStudents.map((s, idx) => {
+      let id = s.id ? String(s.id).trim() : `std-${Date.now()}-${idx}`;
+      if (seenIds.has(id)) {
+        id = `${id}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
+      }
+      seenIds.add(id);
+      return { ...s, id };
+    });
+  };
+
   const [students, setStudents] = useState<StudentDetail[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_students`);
-    return saved ? JSON.parse(saved) : initialStudents;
+    const initial = saved ? JSON.parse(saved) : initialStudents;
+    return sanitizeStudentsList(initial);
   });
 
   const [semesterRecords, setSemesterRecords] = useState<StudentSemesterRecord[]>(() => {
@@ -140,7 +155,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isRemoteUpdateRef.current = true;
         if (remoteSchool) setSchoolData(remoteSchool);
         if (remoteAcademic) setAcademicYear(remoteAcademic);
-        if (remoteStudents) setStudents(remoteStudents);
+        if (remoteStudents) setStudents(sanitizeStudentsList(remoteStudents));
         if (remoteRecords) setSemesterRecords(remoteRecords);
         if (remoteSubjects) setSubjects(remoteSubjects);
 
@@ -162,7 +177,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const { key, value } = payload.new;
                 if (key === 'school_data') setSchoolData(value);
                 if (key === 'academic_year') setAcademicYear(value);
-                if (key === 'students') setStudents(value);
+                if (key === 'students') setStudents(sanitizeStudentsList(value));
                 if (key === 'semester_records') setSemesterRecords(value);
                 if (key === 'subjects') setSubjects(value);
 
@@ -304,10 +319,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStudent = (newStudentData: Omit<StudentDetail, 'id'>) => {
-    const newId = `std-${Date.now()}`;
+    const newId = `std-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     const newStudent: StudentDetail = { ...newStudentData, id: newId };
-    setStudents(prev => [...prev, newStudent]);
+    setStudents(prev => sanitizeStudentsList([...prev, newStudent]));
     setSelectedStudentId(newId);
+  };
+
+  const addStudentsBulk = (newStudentsList: Omit<StudentDetail, 'id'>[]) => {
+    const timestamp = Date.now();
+    const created: StudentDetail[] = newStudentsList.map((s, idx) => ({
+      ...s,
+      id: `std-${timestamp}-${idx}-${Math.random().toString(36).substring(2, 7)}`
+    }));
+    setStudents(prev => sanitizeStudentsList([...prev, ...created]));
+    if (created.length > 0) {
+      setSelectedStudentId(created[created.length - 1].id);
+    }
   };
 
   const updateStudent = (updatedStudent: StudentDetail) => {
@@ -437,6 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedSemester,
         rombelList,
         addStudent,
+        addStudentsBulk,
         updateStudent,
         deleteStudent,
         getStudentById,

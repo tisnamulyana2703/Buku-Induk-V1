@@ -125,6 +125,9 @@ export interface SyncReport {
   appStoreSaved: boolean;
   relationalSaved: {
     school_data?: boolean;
+    academic_years?: boolean;
+    rombels?: boolean;
+    wali_kelas?: boolean;
     subjects?: boolean;
     students?: boolean;
     semester_records?: boolean;
@@ -134,7 +137,7 @@ export interface SyncReport {
 
 export const syncAllDataToSupabase = async (
   schoolData: any,
-  academicYear: string,
+  academicYear: any,
   students: any[],
   semesterRecords: any[],
   subjects: any[]
@@ -151,7 +154,7 @@ export const syncAllDataToSupabase = async (
     return report;
   }
 
-  // 1. Sync to app_store (Key-Value Store)
+  // 1. Sync to app_store (Key-Value JSON Store)
   try {
     const appStorePayloads = [
       { key: 'school_data', value: schoolData, updated_at: new Date().toISOString() },
@@ -203,7 +206,71 @@ export const syncAllDataToSupabase = async (
     }
   }
 
-  // 3. Sync to subjects relational table
+  // 3. Sync to academic_years relational table
+  if (academicYear) {
+    try {
+      const payload = {
+        tahun_ajaran: academicYear.tahunAjaran || '2026/2027',
+        kurikulum: academicYear.kurikulum || 'Kurikulum Merdeka',
+        semester_aktif: Number(academicYear.semesterAktif || 1),
+        tanggal_rapor: academicYear.tanggalRapor || null,
+        rombel_list: academicYear.rombelList || [],
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await supabase.from('academic_years').upsert([payload], { onConflict: 'tahun_ajaran' });
+      if (error) {
+        report.errors.push(`Tabel 'academic_years': ${error.message}`);
+      } else {
+        report.relationalSaved.academic_years = true;
+      }
+    } catch (err: any) {
+      report.errors.push(`Tabel 'academic_years': ${err.message}`);
+    }
+  }
+
+  // 4. Sync to rombels relational table
+  if (academicYear && Array.isArray(academicYear.rombelList) && academicYear.rombelList.length > 0) {
+    try {
+      const payload = academicYear.rombelList.map((rombelName: string, idx: number) => ({
+        nama_rombel: String(rombelName).trim().toUpperCase(),
+        urutan: idx + 1,
+        updated_at: new Date().toISOString()
+      }));
+      const { error } = await supabase.from('rombels').upsert(payload, { onConflict: 'nama_rombel' });
+      if (error) {
+        report.errors.push(`Tabel 'rombels': ${error.message}`);
+      } else {
+        report.relationalSaved.rombels = true;
+      }
+    } catch (err: any) {
+      report.errors.push(`Tabel 'rombels': ${err.message}`);
+    }
+  }
+
+  // 5. Sync to wali_kelas relational table
+  if (academicYear && academicYear.waliKelasMap && typeof academicYear.waliKelasMap === 'object') {
+    try {
+      const entries = Object.entries(academicYear.waliKelasMap);
+      if (entries.length > 0) {
+        const payload = entries.map(([rombel, wali]: [string, any]) => ({
+          nama_rombel: String(rombel).trim().toUpperCase(),
+          nama_wali_kelas: wali?.nama || '',
+          nip_wali_kelas: wali?.nip || '',
+          updated_at: new Date().toISOString()
+        }));
+        const { error } = await supabase.from('wali_kelas').upsert(payload, { onConflict: 'nama_rombel' });
+        if (error) {
+          report.errors.push(`Tabel 'wali_kelas': ${error.message}`);
+        } else {
+          report.relationalSaved.wali_kelas = true;
+        }
+      }
+    } catch (err: any) {
+      report.errors.push(`Tabel 'wali_kelas': ${err.message}`);
+    }
+  }
+
+  // 6. Sync to subjects relational table
   if (Array.isArray(subjects) && subjects.length > 0) {
     try {
       const payload = subjects.map(s => ({
@@ -223,7 +290,7 @@ export const syncAllDataToSupabase = async (
     }
   }
 
-  // 4. Sync to students relational table
+  // 7. Sync to students relational table
   if (Array.isArray(students) && students.length > 0) {
     try {
       const payload = students.map(st => ({
@@ -252,7 +319,7 @@ export const syncAllDataToSupabase = async (
         jarak_ke_sekolah: st.jarakKeSekolah || null,
         transportasi: st.transportasi || null,
         sekolah_asal: st.sekolahAsal || null,
-        diterima_di_kelas: st.diterimaDiKelas ? Number(st.diterimaDiKelas) : null,
+        diterima_di_kelas: st.diterimaDiKelas ? String(st.diterimaDiKelas) : null,
         tanggal_diterima: safeDate(st.tanggalDiterima),
         status_siswa: st.statusSiswa || 'Aktif',
         foto_url: st.fotoUrl || null,
@@ -270,12 +337,12 @@ export const syncAllDataToSupabase = async (
     }
   }
 
-  // 5. Sync to semester_records relational table
+  // 8. Sync to semester_records relational table
   if (Array.isArray(semesterRecords) && semesterRecords.length > 0) {
     try {
       const payload = semesterRecords.map(rec => ({
         student_id: rec.studentId,
-        kelas: Number(rec.kelas),
+        kelas: String(rec.kelas),
         semester: Number(rec.semester),
         tahun_ajaran: rec.tahunAjaran,
         sakit: Number(rec.sakit || 0),

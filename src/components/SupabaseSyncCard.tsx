@@ -106,11 +106,11 @@ export const SupabaseSyncCard: React.FC = () => {
   };
 
   const sqlSchema = `-- ==========================================
--- SCRIPT MIGRASI DATABASE SUPABASE
+-- SCRIPT MIGRASI DATABASE SUPABASE LENGKAP
 -- Buku Induk Siswa & Rapor Digital SD
 -- ==========================================
 
--- 1. TABEL UTAMA SINKRONISASI APLIKASI (Key-Value JSON)
+-- 1. TABEL UTAMA SINKRONISASI JSON APLIKASI (app_store)
 CREATE TABLE IF NOT EXISTS public.app_store (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
@@ -138,7 +138,33 @@ CREATE TABLE IF NOT EXISTS public.school_data (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. TABEL MATA PELAJARAN / KURIKULUM (subjects / curriculum)
+-- 3. TABEL PENGATURAN TAHUN AJARAN & KURIKULUM (academic_years)
+CREATE TABLE IF NOT EXISTS public.academic_years (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tahun_ajaran TEXT UNIQUE NOT NULL,
+  kurikulum TEXT NOT NULL DEFAULT 'Kurikulum Merdeka',
+  semester_aktif INTEGER CHECK (semester_aktif IN (1, 2)) DEFAULT 1,
+  tanggal_rapor TEXT,
+  rombel_list JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. TABEL PENGATURAN ROMBONGAN BELAJAR / KELAS (rombels)
+CREATE TABLE IF NOT EXISTS public.rombels (
+  nama_rombel TEXT PRIMARY KEY,
+  urutan INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. TABEL DAFTAR WALI KELAS (wali_kelas)
+CREATE TABLE IF NOT EXISTS public.wali_kelas (
+  nama_rombel TEXT PRIMARY KEY,
+  nama_wali_kelas TEXT NOT NULL,
+  nip_wali_kelas TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. TABEL MATA PELAJARAN (subjects)
 CREATE TABLE IF NOT EXISTS public.subjects (
   code TEXT PRIMARY KEY,
   nama_mata_pelajaran TEXT NOT NULL,
@@ -147,7 +173,7 @@ CREATE TABLE IF NOT EXISTS public.subjects (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. TABEL SISWA (students)
+-- 7. TABEL SISWA (students)
 CREATE TABLE IF NOT EXISTS public.students (
   id TEXT PRIMARY KEY,
   nis TEXT UNIQUE NOT NULL,
@@ -174,7 +200,7 @@ CREATE TABLE IF NOT EXISTS public.students (
   jarak_ke_sekolah TEXT,
   transportasi TEXT,
   sekolah_asal TEXT,
-  diterima_di_kelas INTEGER,
+  diterima_di_kelas TEXT,
   tanggal_diterima DATE,
   status_siswa TEXT DEFAULT 'Aktif',
   foto_url TEXT,
@@ -183,11 +209,11 @@ CREATE TABLE IF NOT EXISTS public.students (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. TABEL REKAP SEMESTER & NILAI (semester_records)
+-- 8. TABEL REKAP SEMESTER & NILAI (semester_records)
 CREATE TABLE IF NOT EXISTS public.semester_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id TEXT REFERENCES public.students(id) ON DELETE CASCADE,
-  kelas INTEGER CHECK (kelas BETWEEN 1 AND 6),
+  kelas TEXT NOT NULL,
   semester INTEGER CHECK (semester IN (1, 2)),
   tahun_ajaran TEXT NOT NULL,
   sakit INTEGER DEFAULT 0,
@@ -205,15 +231,36 @@ CREATE TABLE IF NOT EXISTS public.semester_records (
 -- ==========================================
 ALTER TABLE public.app_store ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.school_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.academic_years ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rombels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wali_kelas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.semester_records ENABLE ROW LEVEL SECURITY;
 
 -- Kebijakan Akses Baca & Tulis Publik
+DROP POLICY IF EXISTS "Public app_store" ON public.app_store;
 CREATE POLICY "Public app_store" ON public.app_store FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public school_data" ON public.school_data;
 CREATE POLICY "Public school_data" ON public.school_data FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public academic_years" ON public.academic_years;
+CREATE POLICY "Public academic_years" ON public.academic_years FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public rombels" ON public.rombels;
+CREATE POLICY "Public rombels" ON public.rombels FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public wali_kelas" ON public.wali_kelas;
+CREATE POLICY "Public wali_kelas" ON public.wali_kelas FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public subjects" ON public.subjects;
 CREATE POLICY "Public subjects" ON public.subjects FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public students" ON public.students;
 CREATE POLICY "Public students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public semester_records" ON public.semester_records;
 CREATE POLICY "Public semester_records" ON public.semester_records FOR ALL USING (true) WITH CHECK (true);
 `;
 

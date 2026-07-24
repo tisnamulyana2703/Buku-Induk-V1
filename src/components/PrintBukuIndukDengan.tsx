@@ -4,14 +4,12 @@ import { useApp } from '../context/AppContext';
 import { formatIndonesianDate } from '../utils/dateUtils';
 
 export const PrintBukuIndukDengan: React.FC = () => {
-  const { schoolData, academicYear, getStudentById, selectedStudentId, students, semesterRecords, selectedClass, selectedSemester } = useApp();
+  const { schoolData, academicYear, getStudentById, selectedStudentId, students, getSemesterRecord, selectedClass, selectedSemester } = useApp();
   const currentStudent = getStudentById(selectedStudentId || '') || students[0];
 
   if (!currentStudent) return null;
 
-  const currentRecord = semesterRecords.find(
-    r => r.studentId === currentStudent.id && r.kelas === selectedClass && r.semester === selectedSemester
-  );
+  const currentRecord = getSemesterRecord(currentStudent.id, selectedClass, selectedSemester);
 
   return (
     <PrintWrapper documentTitle="BUKU INDUK SISWA (DENGAN DESKRIPSI CAPAIAN)">

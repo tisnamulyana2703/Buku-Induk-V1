@@ -409,7 +409,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveSemesterRecord = (record: StudentSemesterRecord) => {
     setSemesterRecords(prev => {
       const index = prev.findIndex(
-        r => r.studentId === record.studentId && r.kelas === record.kelas && r.semester === record.semester
+        r => r.studentId === record.studentId && String(r.kelas) === String(record.kelas) && Number(r.semester) === Number(record.semester)
       );
       if (index >= 0) {
         const copy = [...prev];

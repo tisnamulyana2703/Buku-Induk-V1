@@ -54,19 +54,23 @@ export const CatatanSiswaView: React.FC = () => {
   const handleGradeChange = (index: number, field: keyof SubjectGrade, value: any) => {
     setRecord(prev => {
       const copyGrades = [...prev.grades];
-      const target = { ...copyGrades[index], [field]: value };
+      const target = { ...copyGrades[index] };
 
-      // Auto-calculate final score and predicate if score changes
-      if (field === 'nilaiPengetahuan' || field === 'nilaiKeterampilan') {
-        const p = Number(target.nilaiPengetahuan) || 0;
-        const k = Number(target.nilaiKeterampilan) || p;
-        const avg = Math.round((p + k) / 2);
-        target.nilaiAkhir = avg;
+      if (field === 'nilaiAkhir' || field === 'nilaiPengetahuan' || field === 'nilaiKeterampilan') {
+        const rawVal = value;
+        target.nilaiAkhir = rawVal;
+        target.nilaiPengetahuan = rawVal;
+        target.nilaiKeterampilan = rawVal;
 
-        if (avg >= 90) target.predikat = 'A';
-        else if (avg >= 80) target.predikat = 'B';
-        else if (avg >= 70) target.predikat = 'C';
+        const numScore = rawVal === '' || rawVal === null || rawVal === undefined ? 0 : Number(rawVal);
+        if (numScore >= 90) target.predikat = 'A';
+        else if (numScore >= 80) target.predikat = 'B';
+        else if (numScore >= 70) target.predikat = 'C';
         else target.predikat = 'D';
+      } else if (field === 'kKM') {
+        target.kKM = value;
+      } else {
+        (target as any)[field] = value;
       }
 
       copyGrades[index] = target;
@@ -101,7 +105,33 @@ export const CatatanSiswaView: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    saveSemesterRecord(record);
+
+    const cleanedGrades = record.grades.map(g => {
+      const numScore = g.nilaiAkhir === '' || g.nilaiAkhir === null || g.nilaiAkhir === undefined ? 0 : Number(g.nilaiAkhir);
+      const numKKM = g.kKM === '' || g.kKM === null || g.kKM === undefined ? 70 : Number(g.kKM);
+      return {
+        ...g,
+        kKM: numKKM,
+        nilaiPengetahuan: numScore,
+        nilaiKeterampilan: numScore,
+        nilaiAkhir: numScore,
+        deskripsiCapaian: g.deskripsiCapaian || ''
+      };
+    });
+
+    const cleanedRecord: StudentSemesterRecord = {
+      ...record,
+      studentId: currentStudent.id,
+      kelas: selectedClass,
+      semester: selectedSemester,
+      sakit: Number(record.sakit) || 0,
+      izin: Number(record.izin) || 0,
+      tanpaKeterangan: Number(record.tanpaKeterangan) || 0,
+      grades: cleanedGrades
+    };
+
+    saveSemesterRecord(cleanedRecord);
+    setRecord(cleanedRecord);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
   };
@@ -122,97 +152,113 @@ export const CatatanSiswaView: React.FC = () => {
       />
 
       <main className="max-w-6xl mx-auto w-full p-4 sm:p-6 flex-1 space-y-4">
-        {/* Top Selectors Bar */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
+        {/* Top Selectors Panel */}
+        <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
           
-          {/* Student Picker with Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-            <div className="flex items-center space-x-2">
-              <User className="w-5 h-5 text-emerald-600 shrink-0" />
-              <label className="text-xs font-bold text-slate-700 uppercase shrink-0">Siswa:</label>
+          {/* Row 1: Student Selection & Quick Search */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center space-x-2 shrink-0">
+              <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">PILIH SISWA</h3>
+                <p className="text-[11px] text-slate-500 font-medium">Pilih atau cari nama/NIS siswa</p>
+              </div>
             </div>
 
-            {/* Quick Search Box */}
-            <div className="relative min-w-[180px] flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Cari nama / NIS..."
-                value={searchQuery}
-                onChange={e => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  const matches = students.filter(s =>
-                    s.namaLengkap.toLowerCase().includes(val.toLowerCase()) ||
-                    s.nis.toLowerCase().includes(val.toLowerCase())
-                  );
-                  if (matches.length > 0 && !matches.some(m => m.id === selectedStudentId)) {
-                    setSelectedStudentId(matches[0].id);
-                  }
-                }}
-                className="w-full pl-9 pr-7 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
-                  title="Bersihkan pencarian"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 lg:max-w-2xl">
+              {/* Quick Search Box */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Cari nama / NIS..."
+                  value={searchQuery}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSearchQuery(val);
+                    const matches = students.filter(s =>
+                      s.namaLengkap.toLowerCase().includes(val.toLowerCase()) ||
+                      s.nis.toLowerCase().includes(val.toLowerCase())
+                    );
+                    if (matches.length > 0 && !matches.some(m => m.id === selectedStudentId)) {
+                      setSelectedStudentId(matches[0].id);
+                    }
+                  }}
+                  className="w-full pl-9 pr-7 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                    title="Bersihkan pencarian"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-            {/* Student Dropdown Select */}
-            <select
-              value={currentStudent?.id || ''}
-              onChange={e => handleStudentChange(e.target.value)}
-              className="border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 md:w-64 truncate"
-            >
-              {filteredStudents.length === 0 ? (
-                <option value="" disabled>Tidak ada siswa yang cocok</option>
-              ) : (
-                filteredStudents.map((s, idx) => (
-                  <option key={`${s.id}-${idx}`} value={s.id}>
-                    {s.nis} - {s.namaLengkap}
-                  </option>
-                ))
-              )}
-            </select>
+              {/* Student Dropdown Select */}
+              <select
+                value={currentStudent?.id || ''}
+                onChange={e => handleStudentChange(e.target.value)}
+                className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex-1 truncate"
+              >
+                {filteredStudents.length === 0 ? (
+                  <option value="" disabled>Tidak ada siswa yang cocok</option>
+                ) : (
+                  filteredStudents.map((s, idx) => (
+                    <option key={`${s.id}-${idx}`} value={s.id}>
+                      {s.nis} - {s.namaLengkap}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
-          {/* Class & Semester Selectors */}
-          <div className="flex flex-wrap items-center space-x-2 w-full md:w-auto justify-end">
-            <span className="text-xs font-bold text-slate-600 uppercase">Kelas/Rombel:</span>
-            <div className="flex bg-slate-100 p-1 rounded-xl space-x-1 overflow-x-auto max-w-full sm:max-w-xs md:max-w-md">
-              {rombelList.map(k => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setSelectedClass(k)}
-                  className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition whitespace-nowrap cursor-pointer ${
-                    String(selectedClass) === String(k) ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {k}
-                </button>
-              ))}
+          {/* Row 2: Class/Rombel & Semester Selector */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider shrink-0">Kelas / Rombel:</span>
+              <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-xl border border-slate-200/60">
+                {rombelList.map(k => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setSelectedClass(k)}
+                    className={`px-3 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                      String(selectedClass) === String(k)
+                        ? 'bg-emerald-600 text-white shadow-sm scale-105'
+                        : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <span className="text-xs font-bold text-slate-600 uppercase ml-2">Sem:</span>
-            <div className="flex bg-slate-100 p-1 rounded-xl space-x-1">
-              {[1, 2].map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSelectedSemester(s as 1 | 2)}
-                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition cursor-pointer ${
-                    selectedSemester === s ? 'bg-amber-500 text-white shadow' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Sem {s}
-                </button>
-              ))}
+            <div className="flex items-center space-x-2 shrink-0">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Semester:</span>
+              <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 space-x-1">
+                {[1, 2].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSelectedSemester(s as 1 | 2)}
+                    className={`px-3.5 py-1.5 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                      selectedSemester === s
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                    }`}
+                  >
+                    Semester {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -274,19 +320,23 @@ export const CatatanSiswaView: React.FC = () => {
                       <td className="p-3 text-center">
                         <input
                           type="number"
-                          value={g.kKM}
-                          onChange={e => handleGradeChange(idx, 'kKM', Number(e.target.value))}
-                          className="w-14 text-center border border-slate-300 rounded px-1 py-1 text-xs"
+                          value={g.kKM === 0 ? '' : g.kKM}
+                          onChange={e => handleGradeChange(idx, 'kKM', e.target.value)}
+                          onFocus={e => e.target.select()}
+                          className="w-14 text-center border border-slate-300 rounded px-1 py-1 text-xs focus:ring-2 focus:ring-emerald-500 font-semibold"
+                          placeholder="70"
                         />
                       </td>
                       <td className="p-3 text-center">
                         <input
                           type="number"
-                          value={g.nilaiAkhir}
-                          onChange={e => handleGradeChange(idx, 'nilaiPengetahuan', Number(e.target.value))}
-                          className="w-16 text-center font-bold border border-emerald-400 bg-emerald-50 rounded px-1.5 py-1 text-sm text-emerald-900"
+                          value={g.nilaiAkhir === 0 && g.nilaiPengetahuan === 0 ? (g.nilaiAkhir ?? '') : g.nilaiAkhir}
+                          onChange={e => handleGradeChange(idx, 'nilaiAkhir', e.target.value)}
+                          onFocus={e => e.target.select()}
+                          className="w-16 text-center font-bold border border-emerald-400 bg-emerald-50 rounded px-1.5 py-1 text-sm text-emerald-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 shadow-sm"
                           min={0}
                           max={100}
+                          placeholder="0"
                         />
                       </td>
                       <td className="p-3 text-center">
@@ -326,27 +376,36 @@ export const CatatanSiswaView: React.FC = () => {
                   <label className="block text-xs font-bold text-slate-600 mb-1">Sakit</label>
                   <input
                     type="number"
-                    value={record.sakit}
-                    onChange={e => setRecord({ ...record, sakit: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold"
+                    value={record.sakit === 0 ? '' : record.sakit}
+                    onChange={e => setRecord({ ...record, sakit: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    onFocus={e => e.target.select()}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                    min={0}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">Izin</label>
                   <input
                     type="number"
-                    value={record.izin}
-                    onChange={e => setRecord({ ...record, izin: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold"
+                    value={record.izin === 0 ? '' : record.izin}
+                    onChange={e => setRecord({ ...record, izin: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    onFocus={e => e.target.select()}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                    min={0}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-600 mb-1">Tanpa Keterangan</label>
                   <input
                     type="number"
-                    value={record.tanpaKeterangan}
-                    onChange={e => setRecord({ ...record, tanpaKeterangan: Number(e.target.value) })}
-                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold"
+                    value={record.tanpaKeterangan === 0 ? '' : record.tanpaKeterangan}
+                    onChange={e => setRecord({ ...record, tanpaKeterangan: e.target.value === '' ? 0 : Number(e.target.value) })}
+                    onFocus={e => e.target.select()}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm text-center font-bold focus:ring-2 focus:ring-emerald-500"
+                    placeholder="0"
+                    min={0}
                   />
                 </div>
               </div>

@@ -17,7 +17,8 @@ export const CatatanSiswaView: React.FC = () => {
     getSemesterRecord,
     saveSemesterRecord,
     assessmentMode,
-    setActiveView
+    setActiveView,
+    rombelList
   } = useApp();
 
   const currentStudent = getStudentById(selectedStudentId || '') || students[0];
@@ -135,16 +136,16 @@ export const CatatanSiswaView: React.FC = () => {
           </div>
 
           {/* Class & Semester Selectors */}
-          <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
-            <span className="text-xs font-bold text-slate-600 uppercase">Kelas:</span>
-            <div className="flex bg-slate-100 p-1 rounded-xl space-x-1">
-              {[1, 2, 3, 4, 5, 6].map(k => (
+          <div className="flex flex-wrap items-center space-x-2 w-full md:w-auto justify-end">
+            <span className="text-xs font-bold text-slate-600 uppercase">Kelas/Rombel:</span>
+            <div className="flex bg-slate-100 p-1 rounded-xl space-x-1 overflow-x-auto max-w-full sm:max-w-xs md:max-w-md">
+              {rombelList.map(k => (
                 <button
                   key={k}
                   type="button"
                   onClick={() => setSelectedClass(k)}
-                  className={`px-3 py-1 text-xs font-extrabold rounded-lg transition cursor-pointer ${
-                    selectedClass === k ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2.5 py-1 text-xs font-extrabold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                    String(selectedClass) === String(k) ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   {k}

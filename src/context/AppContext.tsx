@@ -56,17 +56,18 @@ interface AppContextType {
   selectedStudentId: string | null;
   setSelectedStudentId: (id: string | null) => void;
   
-  selectedClass: number; // 1 to 6
-  setSelectedClass: (c: number) => void;
+  selectedClass: string | number; // e.g. "1A", "1B", 1
+  setSelectedClass: (c: string | number) => void;
   selectedSemester: 1 | 2;
   setSelectedSemester: (s: 1 | 2) => void;
+  rombelList: string[];
 
   // Helpers
   addStudent: (student: Omit<StudentDetail, 'id'>) => void;
   updateStudent: (student: StudentDetail) => void;
   deleteStudent: (id: string) => void;
   getStudentById: (id: string) => StudentDetail | undefined;
-  getSemesterRecord: (studentId: string, kelas: number, semester: 1 | 2) => StudentSemesterRecord | undefined;
+  getSemesterRecord: (studentId: string, kelas: string | number, semester: 1 | 2) => StudentSemesterRecord;
   saveSemesterRecord: (record: StudentSemesterRecord) => void;
   resetAllData: () => void;
 }
@@ -104,7 +105,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>('tanpa');
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(students[0]?.id || null);
-  const [selectedClass, setSelectedClass] = useState<number>(1);
+  
+  const rombelList = academicYear.rombelList && academicYear.rombelList.length > 0
+    ? academicYear.rombelList
+    : ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B'];
+
+  const [selectedClass, setSelectedClass] = useState<string | number>(() => rombelList[0] || '1A');
   const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
 
   // Realtime Supabase Sync States
@@ -320,9 +326,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return students.find(s => s.id === id);
   };
 
-  const getSemesterRecord = (studentId: string, kelas: number, semester: 1 | 2): StudentSemesterRecord => {
+  const getSemesterRecord = (studentId: string, kelas: string | number, semester: 1 | 2): StudentSemesterRecord => {
     const found = semesterRecords.find(
-      r => r.studentId === studentId && r.kelas === kelas && r.semester === semester
+      r => r.studentId === studentId && String(r.kelas) === String(kelas) && r.semester === semester
     );
 
     const gradeMap = new Map<string, SubjectGrade>();
@@ -429,6 +435,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSelectedClass,
         selectedSemester,
         setSelectedSemester,
+        rombelList,
         addStudent,
         updateStudent,
         deleteStudent,

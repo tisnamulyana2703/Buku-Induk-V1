@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import { StudentDetail } from '../types';
 
 export const DataLengkapSiswaView: React.FC = () => {
-  const { students, selectedStudentId, setSelectedStudentId, updateStudent, getStudentById } = useApp();
+  const { students, selectedStudentId, setSelectedStudentId, updateStudent, getStudentById, rombelList } = useApp();
   
   const currentStudent = getStudentById(selectedStudentId || '') || students[0];
   const [formData, setFormData] = useState<StudentDetail>(currentStudent);
@@ -266,6 +266,39 @@ export const DataLengkapSiswaView: React.FC = () => {
                     <option value="Kos">Kos / Asrama</option>
                     <option value="Lainnya">Lainnya</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Sekolah Asal (TK / PAUD)</label>
+                  <input
+                    type="text"
+                    value={formData.sekolahAsal || ''}
+                    onChange={e => setFormData({ ...formData, sekolahAsal: e.target.value })}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Diterima di Kelas / Rombel</label>
+                  <select
+                    value={formData.diterimaDiKelas}
+                    onChange={e => setFormData({ ...formData, diterimaDiKelas: e.target.value })}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm bg-white font-bold"
+                  >
+                    {rombelList.map(k => (
+                      <option key={k} value={k}>Kelas / Rombel {k}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Tanggal Diterima Sekolah</label>
+                  <input
+                    type="date"
+                    value={formData.tanggalDiterima || ''}
+                    onChange={e => setFormData({ ...formData, tanggalDiterima: e.target.value })}
+                    className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm"
+                  />
                 </div>
               </div>
             </div>

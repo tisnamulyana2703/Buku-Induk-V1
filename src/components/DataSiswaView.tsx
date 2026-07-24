@@ -7,10 +7,11 @@ import { ExcelImportModal } from './ExcelImportModal';
 import { StudentDetail } from '../types';
 
 export const DataSiswaView: React.FC = () => {
-  const { students, addStudent, updateStudent, deleteStudent, setSelectedStudentId, setActiveView } = useApp();
+  const { students, addStudent, updateStudent, deleteStudent, setSelectedStudentId, setActiveView, rombelList } = useApp();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | 'Aktif' | 'Lulus' | 'Pindah' | 'Keluar'>('Semua');
+  const [rombelFilter, setRombelFilter] = useState<string>('Semua');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showExcelModal, setShowExcelModal] = useState(false);
   
@@ -27,7 +28,7 @@ export const DataSiswaView: React.FC = () => {
   const [newJk, setNewJk] = useState<'L' | 'P'>('L');
   const [newTempatLahir, setNewTempatLahir] = useState('Bandung');
   const [newTanggalLahir, setNewTanggalLahir] = useState('2015-01-01');
-  const [newKelas, setNewKelas] = useState(1);
+  const [newKelas, setNewKelas] = useState<string | number>(() => rombelList[0] || '1A');
 
   // Status counts
   const countAktif = students.filter(s => s.statusSiswa === 'Aktif').length;
@@ -44,8 +45,9 @@ export const DataSiswaView: React.FC = () => {
     );
 
     const matchesStatus = statusFilter === 'Semua' || s.statusSiswa === statusFilter;
+    const matchesRombel = rombelFilter === 'Semua' || String(s.diterimaDiKelas) === String(rombelFilter);
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesStatus && matchesRombel;
   });
 
   const handleAddSubmit = (e: React.FormEvent) => {
@@ -223,19 +225,36 @@ export const DataSiswaView: React.FC = () => {
         </div>
 
         {/* Search & Actions Bar */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-80">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Cari Nama / NIS / NISN..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Cari Nama / NIS / NISN..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            {/* Rombel Filter Dropdown */}
+            <div className="w-full sm:w-auto flex items-center space-x-1">
+              <span className="text-xs font-bold text-slate-500 uppercase whitespace-nowrap">Rombel:</span>
+              <select
+                value={rombelFilter}
+                onChange={e => setRombelFilter(e.target.value)}
+                className="border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-auto"
+              >
+                <option value="Semua">Semua Rombel ({rombelList.length})</option>
+                {rombelList.map(r => (
+                  <option key={r} value={r}>Kelas {r}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
             {/* Import Excel Button */}
             <button
               onClick={() => setShowExcelModal(true)}
@@ -534,15 +553,15 @@ export const DataSiswaView: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                    Diterima di Kelas
+                    Diterima di Kelas / Rombel
                   </label>
                   <select
                     value={newKelas}
-                    onChange={e => setNewKelas(Number(e.target.value))}
+                    onChange={e => setNewKelas(e.target.value)}
                     className="w-full border border-slate-300 rounded-xl px-3 py-2 bg-white font-bold"
                   >
-                    {[1, 2, 3, 4, 5, 6].map(k => (
-                      <option key={k} value={k}>Kelas {k}</option>
+                    {rombelList.map(k => (
+                      <option key={k} value={k}>Kelas / Rombel {k}</option>
                     ))}
                   </select>
                 </div>

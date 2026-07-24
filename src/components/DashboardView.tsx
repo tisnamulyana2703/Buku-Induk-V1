@@ -11,10 +11,11 @@ export const DashboardView: React.FC = () => {
     setSelectedSemester,
     resetAllData,
     students,
-    schoolData
+    schoolData,
+    rombelList
   } = useApp();
 
-  const handleOpenCatatan = (kelas: number, semester: 1 | 2) => {
+  const handleOpenCatatan = (kelas: string | number, semester: 1 | 2) => {
     setSelectedClass(kelas);
     setSelectedSemester(semester);
     setActiveView('catatan-siswa');
@@ -132,24 +133,27 @@ export const DashboardView: React.FC = () => {
               <div className="col-span-6 bg-[#fff6a2] text-gray-900 py-1 rounded">SEMESTER</div>
             </div>
 
-            <div className="space-y-1.5">
-              {[1, 2, 3, 4, 5, 6].map(kelasNum => (
-                <div key={kelasNum} className="grid grid-cols-12 gap-1.5 items-center">
+            <div className="space-y-1.5 max-h-[290px] overflow-y-auto pr-1">
+              {rombelList.map(kelasKey => (
+                <div key={kelasKey} className="grid grid-cols-12 gap-1.5 items-center">
                   <button
-                    onClick={() => handleOpenCatatan(kelasNum, 1)}
-                    className="col-span-6 bg-[#89e051] hover:bg-[#72cc3a] text-gray-900 font-black py-1.5 px-2 rounded-lg text-center text-sm shadow transition border border-emerald-600 cursor-pointer"
+                    onClick={() => handleOpenCatatan(kelasKey, 1)}
+                    className="col-span-6 bg-[#89e051] hover:bg-[#72cc3a] text-gray-900 font-black py-1.5 px-2 rounded-lg text-center text-xs sm:text-sm shadow transition border border-emerald-600 truncate cursor-pointer"
+                    title={`Buka Catatan Kelas ${kelasKey}`}
                   >
-                    KELAS {kelasNum}
+                    KELAS {kelasKey}
                   </button>
                   <button
-                    onClick={() => handleOpenCatatan(kelasNum, 1)}
-                    className="col-span-3 bg-[#fdf8bc] hover:bg-[#fbf192] text-gray-900 font-extrabold py-1.5 rounded-lg text-center text-sm shadow border border-amber-300 transition cursor-pointer"
+                    onClick={() => handleOpenCatatan(kelasKey, 1)}
+                    className="col-span-3 bg-[#fdf8bc] hover:bg-[#fbf192] text-gray-900 font-extrabold py-1.5 rounded-lg text-center text-xs sm:text-sm shadow border border-amber-300 transition cursor-pointer"
+                    title={`Semester 1`}
                   >
                     1
                   </button>
                   <button
-                    onClick={() => handleOpenCatatan(kelasNum, 2)}
-                    className="col-span-3 bg-[#fdf8bc] hover:bg-[#fbf192] text-gray-900 font-extrabold py-1.5 rounded-lg text-center text-sm shadow border border-amber-300 transition cursor-pointer"
+                    onClick={() => handleOpenCatatan(kelasKey, 2)}
+                    className="col-span-3 bg-[#fdf8bc] hover:bg-[#fbf192] text-gray-900 font-extrabold py-1.5 rounded-lg text-center text-xs sm:text-sm shadow border border-amber-300 transition cursor-pointer"
+                    title={`Semester 2`}
                   >
                     2
                   </button>

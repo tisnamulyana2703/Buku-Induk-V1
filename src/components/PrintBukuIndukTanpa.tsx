@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { formatIndonesianDate } from '../utils/dateUtils';
 
 export const PrintBukuIndukTanpa: React.FC = () => {
-  const { schoolData, academicYear, getStudentById, selectedStudentId, students, semesterRecords, subjects } = useApp();
+  const { schoolData, academicYear, getStudentById, selectedStudentId, students, semesterRecords, subjects, rombelList } = useApp();
   const currentStudent = getStudentById(selectedStudentId || '') || students[0];
 
   if (!currentStudent) return null;
@@ -36,22 +36,22 @@ export const PrintBukuIndukTanpa: React.FC = () => {
           </div>
         </div>
 
-        {/* Grade Ledger Table (Kelas 1 to 6) */}
+        {/* Grade Ledger Table (Dynamic Rombels) */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse border border-black text-center font-sans text-[10px]">
             <thead>
               <tr className="bg-slate-200 border-b border-black font-bold uppercase">
                 <th rowSpan={2} className="border border-black p-1 w-6">No</th>
                 <th rowSpan={2} className="border border-black p-1 text-left w-36">Mata Pelajaran</th>
-                {[1, 2, 3, 4, 5, 6].map(k => (
+                {rombelList.map(k => (
                   <th key={k} colSpan={2} className="border border-black p-1">KELAS {k}</th>
                 ))}
               </tr>
               <tr className="bg-slate-100 border-b border-black font-bold">
-                {[1, 2, 3, 4, 5, 6].map(k => (
+                {rombelList.map(k => (
                   <React.Fragment key={k}>
-                    <th className="border border-black p-1 w-8">S1</th>
-                    <th className="border border-black p-1 w-8">S2</th>
+                    <th className="border border-black p-1 min-w-[28px]">S1</th>
+                    <th className="border border-black p-1 min-w-[28px]">S2</th>
                   </React.Fragment>
                 ))}
               </tr>
@@ -62,9 +62,9 @@ export const PrintBukuIndukTanpa: React.FC = () => {
                   <td className="border border-black p-1 font-bold">{idx + 1}</td>
                   <td className="border border-black p-1 text-left font-semibold">{sub.namaMataPelajaran}</td>
                   
-                  {[1, 2, 3, 4, 5, 6].map(k => {
-                    const recS1 = semesterRecords.find(r => r.studentId === currentStudent.id && r.kelas === k && r.semester === 1);
-                    const recS2 = semesterRecords.find(r => r.studentId === currentStudent.id && r.kelas === k && r.semester === 2);
+                  {rombelList.map(k => {
+                    const recS1 = semesterRecords.find(r => r.studentId === currentStudent.id && String(r.kelas) === String(k) && r.semester === 1);
+                    const recS2 = semesterRecords.find(r => r.studentId === currentStudent.id && String(r.kelas) === String(k) && r.semester === 2);
                     
                     const scoreS1 = recS1?.grades.find(g => g.code === sub.code)?.nilaiAkhir;
                     const scoreS2 = recS2?.grades.find(g => g.code === sub.code)?.nilaiAkhir;

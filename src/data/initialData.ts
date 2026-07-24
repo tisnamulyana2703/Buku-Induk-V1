@@ -23,13 +23,27 @@ export const initialAcademicYear: AcademicYearData = {
   kurikulum: 'Kurikulum Merdeka',
   semesterAktif: 1,
   tanggalRapor: '21 Desember 2026',
+  rombelList: ['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B'],
   waliKelasMap: {
-    1: { nama: 'Siti Rahmah, S.Pd.', nip: '19820315 200801 2 012' },
-    2: { nama: 'Budi Santoso, S.Pd.', nip: '19850720 200902 1 008' },
-    3: { nama: 'Rina Wijaya, S.Pd.', nip: '19881104 201101 2 005' },
-    4: { nama: 'Dewi Sartika, S.Pd.SD', nip: '19790412 200501 2 003' },
-    5: { nama: 'Agus Setiawan, S.Pd.', nip: '19810908 200701 1 011' },
-    6: { nama: 'Hj. Nurbaiti, M.Pd.', nip: '19741210 199803 2 002' },
+    '1A': { nama: 'Siti Rahmah, S.Pd.', nip: '19820315 200801 2 012' },
+    '1B': { nama: 'Ahmad Fauzi, S.Pd.', nip: '19860411 201001 1 007' },
+    '2A': { nama: 'Budi Santoso, S.Pd.', nip: '19850720 200902 1 008' },
+    '2B': { nama: 'Nurul Hidayah, S.Pd.', nip: '19890215 201201 2 004' },
+    '3A': { nama: 'Rina Wijaya, S.Pd.', nip: '19881104 201101 2 005' },
+    '3B': { nama: 'Bambang Irawan, S.Pd.', nip: '19830509 200604 1 009' },
+    '4A': { nama: 'Dewi Sartika, S.Pd.SD', nip: '19790412 200501 2 003' },
+    '4B': { nama: 'Endang Kusuma, S.Pd.', nip: '19870821 201002 2 006' },
+    '5A': { nama: 'Agus Setiawan, S.Pd.', nip: '19810908 200701 1 011' },
+    '5B': { nama: 'Fitriani, S.Pd.', nip: '19900112 201402 2 008' },
+    '6A': { nama: 'Hj. Nurbaiti, M.Pd.', nip: '19741210 199803 2 002' },
+    '6B': { nama: 'Drs. Supriadi', nip: '19710318 199602 1 001' },
+    // Backwards compatibility fallbacks
+    '1': { nama: 'Siti Rahmah, S.Pd.', nip: '19820315 200801 2 012' },
+    '2': { nama: 'Budi Santoso, S.Pd.', nip: '19850720 200902 1 008' },
+    '3': { nama: 'Rina Wijaya, S.Pd.', nip: '19881104 201101 2 005' },
+    '4': { nama: 'Dewi Sartika, S.Pd.SD', nip: '19790412 200501 2 003' },
+    '5': { nama: 'Agus Setiawan, S.Pd.', nip: '19810908 200701 1 011' },
+    '6': { nama: 'Hj. Nurbaiti, M.Pd.', nip: '19741210 199803 2 002' },
   }
 };
 

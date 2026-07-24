@@ -30,7 +30,8 @@ export interface AcademicYearData {
   kurikulum: 'Kurikulum Merdeka' | 'Kurikulum 2013';
   semesterAktif: 1 | 2;
   tanggalRapor: string;
-  waliKelasMap: Record<number, { nama: string; nip: string }>; // Class number (1-6) -> Wali Kelas
+  rombelList?: string[]; // e.g. ['1A', '1B', '2A', '2B', ...]
+  waliKelasMap: Record<string | number, { nama: string; nip: string }>; // Class name/number -> Wali Kelas
 }
 
 export interface StudentParentData {
@@ -92,7 +93,7 @@ export interface StudentDetail {
 
   // Riwayat
   sekolahAsal: string;
-  diterimaDiKelas: number;
+  diterimaDiKelas: string | number;
   tanggalDiterima: string;
   
   // Foto & Status
@@ -118,7 +119,7 @@ export interface SubjectGrade {
 
 export interface StudentSemesterRecord {
   studentId: string;
-  kelas: number; // 1 - 6
+  kelas: string | number; // e.g. "1A", "1B", 1, 2
   semester: 1 | 2;
   tahunAjaran: string;
   grades: SubjectGrade[];

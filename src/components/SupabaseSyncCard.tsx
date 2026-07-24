@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { supabase, checkSupabaseConnection, saveAppDataToSupabase, getAppDataFromSupabase } from '../lib/supabase';
+import { supabase, checkSupabaseConnection, syncAllDataToSupabase, getAppDataFromSupabase } from '../lib/supabase';
 import { Database, CloudUpload, CloudDownload, CheckCircle2, AlertCircle, RefreshCw, Copy, Check } from 'lucide-react';
 
 export const SupabaseSyncCard: React.FC = () => {
@@ -12,19 +12,116 @@ export const SupabaseSyncCard: React.FC = () => {
   const [copiedSql, setCopiedSql] = useState<boolean>(false);
   const [showSqlDetails, setShowSqlDetails] = useState<boolean>(false);
 
-  const sqlSchema = `-- Salin dan jalankan SQL ini di SQL Editor Supabase Anda:
+  const sqlSchema = `-- ==========================================
+-- SCRIPT MIGRASI DATABASE SUPABASE
+-- Buku Induk Siswa & Rapor Digital SD
+-- ==========================================
 
+-- 1. TABEL UTAMA SINKRONISASI APLIKASI (Key-Value JSON)
 CREATE TABLE IF NOT EXISTS public.app_store (
   key TEXT PRIMARY KEY,
   value JSONB NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Buka akses RLS (Row Level Security) untuk anon key
-ALTER TABLE public.app_store ENABLE ROW LEVEL SECURITY;
+-- 2. TABEL PROFIL SEKOLAH (school_data)
+CREATE TABLE IF NOT EXISTS public.school_data (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  npsn TEXT UNIQUE NOT NULL,
+  nama_sekolah TEXT NOT NULL,
+  nss TEXT,
+  alamat TEXT,
+  kelurahan TEXT,
+  kecamatan TEXT,
+  kabupaten TEXT,
+  provinsi TEXT,
+  kode_pos TEXT,
+  telepon TEXT,
+  email TEXT,
+  website TEXT,
+  nama_kepala_sekolah TEXT,
+  nip_kepala_sekolah TEXT,
+  logo_url TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 
-CREATE POLICY "Akses publik baca tulis app_store" ON public.app_store
-  FOR ALL USING (true) WITH CHECK (true);
+-- 3. TABEL MATA PELAJARAN / KURIKULUM (subjects / curriculum)
+CREATE TABLE IF NOT EXISTS public.subjects (
+  code TEXT PRIMARY KEY,
+  nama_mata_pelajaran TEXT NOT NULL,
+  kkm INTEGER DEFAULT 75,
+  kelompok TEXT DEFAULT 'Wajib',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. TABEL SISWA (students)
+CREATE TABLE IF NOT EXISTS public.students (
+  id TEXT PRIMARY KEY,
+  nis TEXT UNIQUE NOT NULL,
+  nisn TEXT UNIQUE,
+  nama_lengkap TEXT NOT NULL,
+  nama_panggilan TEXT,
+  jenis_kelamin TEXT CHECK (jenis_kelamin IN ('L', 'P')),
+  tempat_lahir TEXT,
+  tanggal_lahir DATE,
+  agama TEXT,
+  kewarganegaraan TEXT DEFAULT 'Indonesia',
+  anak_ke INTEGER,
+  jumlah_saudara_kandung INTEGER DEFAULT 0,
+  jumlah_saudara_tiri INTEGER DEFAULT 0,
+  jumlah_saudara_angkat INTEGER DEFAULT 0,
+  status_anak TEXT DEFAULT 'Kandung',
+  bahasa_sehari_hari TEXT,
+  alamat_siswa TEXT,
+  rt_rw TEXT,
+  dusun_desa TEXT,
+  kecamatan TEXT,
+  kabupaten TEXT,
+  tinggal_dengan TEXT,
+  jarak_ke_sekolah TEXT,
+  transportasi TEXT,
+  sekolah_asal TEXT,
+  diterima_di_kelas INTEGER,
+  tanggal_diterima DATE,
+  status_siswa TEXT DEFAULT 'Aktif',
+  foto_url TEXT,
+  parent_data JSONB,
+  physical_data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. TABEL REKAP SEMESTER & NILAI (semester_records)
+CREATE TABLE IF NOT EXISTS public.semester_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id TEXT REFERENCES public.students(id) ON DELETE CASCADE,
+  kelas INTEGER CHECK (kelas BETWEEN 1 AND 6),
+  semester INTEGER CHECK (semester IN (1, 2)),
+  tahun_ajaran TEXT NOT NULL,
+  sakit INTEGER DEFAULT 0,
+  izin INTEGER DEFAULT 0,
+  tanpa_keterangan INTEGER DEFAULT 0,
+  catatan_wali_kelas TEXT,
+  grades JSONB,
+  ekstrakurikuler JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(student_id, kelas, semester, tahun_ajaran)
+);
+
+-- ==========================================
+-- AKSEBILITAS & RLS (Row Level Security)
+-- ==========================================
+ALTER TABLE public.app_store ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.school_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subjects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.semester_records ENABLE ROW LEVEL SECURITY;
+
+-- Kebijakan Akses Baca & Tulis Publik
+CREATE POLICY "Public app_store" ON public.app_store FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public school_data" ON public.school_data FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public subjects" ON public.subjects FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public students" ON public.students FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public semester_records" ON public.semester_records FOR ALL USING (true) WITH CHECK (true);
 `;
 
   useEffect(() => {
@@ -42,25 +139,32 @@ CREATE POLICY "Akses publik baca tulis app_store" ON public.app_store
     setIsSyncing(true);
     setSyncMessage(null);
 
-    const results = await Promise.all([
-      saveAppDataToSupabase('school_data', schoolData),
-      saveAppDataToSupabase('academic_year', academicYear),
-      saveAppDataToSupabase('students', students),
-      saveAppDataToSupabase('semester_records', semesterRecords),
-      saveAppDataToSupabase('subjects', subjects)
-    ]);
+    const report = await syncAllDataToSupabase(
+      schoolData,
+      academicYear,
+      students,
+      semesterRecords,
+      subjects
+    );
 
-    const failed = results.find(r => !r.success);
-    if (failed) {
+    if (report.success) {
+      const savedTables: string[] = [];
+      if (report.appStoreSaved) savedTables.push('app_store');
+      if (report.relationalSaved.school_data) savedTables.push('school_data');
+      if (report.relationalSaved.subjects) savedTables.push('subjects');
+      if (report.relationalSaved.students) savedTables.push('students');
+      if (report.relationalSaved.semester_records) savedTables.push('semester_records');
+
+      setSyncMessage({
+        type: 'success',
+        text: `Berhasil disimpan ke Supabase! Tabel terisi: ${savedTables.join(', ')}.`
+      });
+      setIsConnected(true);
+    } else {
       setShowSqlDetails(true);
       setSyncMessage({
         type: 'error',
-        text: `Tabel 'app_store' belum dibuat di Supabase. Silakan jalankan query SQL pada panel di bawah ini di SQL Editor Supabase Anda.`
-      });
-    } else {
-      setSyncMessage({
-        type: 'success',
-        text: 'Seluruh data sekolah, siswa, nilai, dan mata pelajaran berhasil diunggah ke Supabase!'
+        text: `Gagal menyimpan ke Supabase: ${report.errors.join(' | ')}. Pastikan skrip SQL di bawah telah dijalankan di SQL Editor Supabase Anda.`
       });
     }
     setIsSyncing(false);

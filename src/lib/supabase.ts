@@ -1,16 +1,81 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const CUSTOM_URL_KEY = 'custom_supabase_url';
+const CUSTOM_KEY_KEY = 'custom_supabase_anon_key';
 
-// Safe fallback so createClient never throws on startup if env vars are missing
-const validUrl = supabaseUrl && supabaseUrl.startsWith('http') ? supabaseUrl : 'https://placeholder.supabase.co';
-const validKey = supabaseAnonKey || 'placeholder';
+export const getSupabaseCredentials = () => {
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  const localUrl = (localStorage.getItem(CUSTOM_URL_KEY) || '').trim();
+  const localKey = (localStorage.getItem(CUSTOM_KEY_KEY) || '').trim();
 
-export const supabase = createClient(validUrl, validKey);
+  const url = localUrl || envUrl;
+  const key = localKey || envKey;
+
+  return {
+    url,
+    key,
+    isCustom: Boolean(localUrl || localKey),
+    source: (localUrl || localKey) ? 'manual' : (envUrl || envKey) ? 'env' : 'none'
+  };
+};
+
+export const setCustomSupabaseCredentials = (url: string, key: string) => {
+  if (url && url.trim()) {
+    localStorage.setItem(CUSTOM_URL_KEY, url.trim());
+  } else {
+    localStorage.removeItem(CUSTOM_URL_KEY);
+  }
+
+  if (key && key.trim()) {
+    localStorage.setItem(CUSTOM_KEY_KEY, key.trim());
+  } else {
+    localStorage.removeItem(CUSTOM_KEY_KEY);
+  }
+
+  reinitSupabaseClient();
+};
+
+export const clearCustomSupabaseCredentials = () => {
+  localStorage.removeItem(CUSTOM_URL_KEY);
+  localStorage.removeItem(CUSTOM_KEY_KEY);
+  reinitSupabaseClient();
+};
+
+let supabaseClientInstance: any = null;
+
+export const getSupabaseClient = () => {
+  if (!supabaseClientInstance) {
+    const creds = getSupabaseCredentials();
+    const validUrl = creds.url && creds.url.startsWith('http') ? creds.url : 'https://placeholder.supabase.co';
+    const validKey = creds.key || 'placeholder';
+    supabaseClientInstance = createClient(validUrl, validKey);
+  }
+  return supabaseClientInstance;
+};
+
+export const reinitSupabaseClient = () => {
+  const creds = getSupabaseCredentials();
+  const validUrl = creds.url && creds.url.startsWith('http') ? creds.url : 'https://placeholder.supabase.co';
+  const validKey = creds.key || 'placeholder';
+  supabaseClientInstance = createClient(validUrl, validKey);
+  return supabaseClientInstance;
+};
+
+export const supabase = new Proxy({} as any, {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    const val = (client as any)[prop];
+    if (typeof val === 'function') {
+      return val.bind(client);
+    }
+    return val;
+  }
+});
 
 export const isSupabaseConfigured = (): boolean => {
-  return Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co');
+  const creds = getSupabaseCredentials();
+  return Boolean(creds.url && creds.key && creds.url !== 'https://placeholder.supabase.co');
 };
 
 export const checkSupabaseConnection = async (): Promise<boolean> => {

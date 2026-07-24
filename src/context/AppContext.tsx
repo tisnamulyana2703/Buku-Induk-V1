@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   defaultSubjects,
   initialAcademicYear,
@@ -16,6 +16,12 @@ import {
   SubjectGrade,
   SubjectItem
 } from '../types';
+import {
+  supabase,
+  isSupabaseConfigured,
+  syncAllDataToSupabase,
+  getAppDataFromSupabase
+} from '../lib/supabase';
 
 interface AppContextType {
   schoolData: SchoolData;
@@ -39,6 +45,12 @@ interface AppContextType {
   
   activeView: ActiveView;
   setActiveView: (view: ActiveView) => void;
+
+  // Realtime Supabase Sync Status
+  isRealtimeActive: boolean;
+  isAutoSyncing: boolean;
+  lastSyncedAt: Date | null;
+  syncError: string | null;
 
   // Selected state for student modal or print view
   selectedStudentId: string | null;
@@ -94,6 +106,113 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(students[0]?.id || null);
   const [selectedClass, setSelectedClass] = useState<number>(1);
   const [selectedSemester, setSelectedSemester] = useState<1 | 2>(1);
+
+  // Realtime Supabase Sync States
+  const [isRealtimeActive, setIsRealtimeActive] = useState<boolean>(false);
+  const [isAutoSyncing, setIsAutoSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const isRemoteUpdateRef = useRef<boolean>(false);
+  const isInitialLoadedRef = useRef<boolean>(false);
+
+  // Initial load from Supabase & Subscribe to Realtime Postgres Changes
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    let channel: any = null;
+
+    const initSupabaseRealtime = async () => {
+      try {
+        // Fetch existing data from Supabase app_store on boot
+        const remoteSchool = await getAppDataFromSupabase('school_data');
+        const remoteAcademic = await getAppDataFromSupabase('academic_year');
+        const remoteStudents = await getAppDataFromSupabase('students');
+        const remoteRecords = await getAppDataFromSupabase('semester_records');
+        const remoteSubjects = await getAppDataFromSupabase('subjects');
+
+        isRemoteUpdateRef.current = true;
+        if (remoteSchool) setSchoolData(remoteSchool);
+        if (remoteAcademic) setAcademicYear(remoteAcademic);
+        if (remoteStudents) setStudents(remoteStudents);
+        if (remoteRecords) setSemesterRecords(remoteRecords);
+        if (remoteSubjects) setSubjects(remoteSubjects);
+
+        setLastSyncedAt(new Date());
+        setTimeout(() => {
+          isRemoteUpdateRef.current = false;
+          isInitialLoadedRef.current = true;
+        }, 500);
+
+        // Subscribe to Supabase Realtime channel
+        channel = supabase
+          .channel('public:app_store_realtime')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'app_store' },
+            (payload: any) => {
+              if (payload.new && payload.new.key && payload.new.value) {
+                isRemoteUpdateRef.current = true;
+                const { key, value } = payload.new;
+                if (key === 'school_data') setSchoolData(value);
+                if (key === 'academic_year') setAcademicYear(value);
+                if (key === 'students') setStudents(value);
+                if (key === 'semester_records') setSemesterRecords(value);
+                if (key === 'subjects') setSubjects(value);
+
+                setLastSyncedAt(new Date());
+                setTimeout(() => {
+                  isRemoteUpdateRef.current = false;
+                }, 500);
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+              setIsRealtimeActive(true);
+            }
+          });
+      } catch (err: any) {
+        console.warn('Realtime init notice:', err);
+        isInitialLoadedRef.current = true;
+      }
+    };
+
+    initSupabaseRealtime();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  // Automatic Debounced Auto-Sync to Supabase when state changes
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    if (isRemoteUpdateRef.current) return;
+    if (!isInitialLoadedRef.current) return;
+
+    const timer = setTimeout(async () => {
+      setIsAutoSyncing(true);
+      setSyncError(null);
+      const report = await syncAllDataToSupabase(
+        schoolData,
+        academicYear,
+        students,
+        semesterRecords,
+        subjects
+      );
+      setIsAutoSyncing(false);
+      if (report.success) {
+        setLastSyncedAt(new Date());
+      } else if (report.errors.length > 0) {
+        setSyncError(report.errors[0]);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [schoolData, academicYear, students, semesterRecords, subjects]);
 
   // Auto save to localStorage
   useEffect(() => {
@@ -300,6 +419,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAssessmentMode,
         activeView,
         setActiveView,
+        isRealtimeActive,
+        isAutoSyncing,
+        lastSyncedAt,
+        syncError,
         selectedStudentId,
         setSelectedStudentId,
         selectedClass,

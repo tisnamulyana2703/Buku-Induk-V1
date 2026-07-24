@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { supabase, checkSupabaseConnection, syncAllDataToSupabase, getAppDataFromSupabase } from '../lib/supabase';
-import { Database, CloudUpload, CloudDownload, CheckCircle2, AlertCircle, RefreshCw, Copy, Check } from 'lucide-react';
+import { checkSupabaseConnection, syncAllDataToSupabase, getAppDataFromSupabase } from '../lib/supabase';
+import { Database, CloudUpload, CloudDownload, CheckCircle2, AlertCircle, RefreshCw, Copy, Check, Zap, Radio } from 'lucide-react';
 
 export const SupabaseSyncCard: React.FC = () => {
-  const { schoolData, academicYear, students, semesterRecords, subjects, setSchoolData, setAcademicYear, setStudents, setSemesterRecords, setSubjects } = useApp();
+  const {
+    schoolData,
+    academicYear,
+    students,
+    semesterRecords,
+    subjects,
+    setSchoolData,
+    setAcademicYear,
+    setStudents,
+    setSemesterRecords,
+    setSubjects,
+    isRealtimeActive,
+    isAutoSyncing,
+    lastSyncedAt,
+    syncError
+  } = useApp();
 
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -261,6 +276,42 @@ CREATE POLICY "Public semester_records" ON public.semester_records FOR ALL USING
         </div>
       </div>
 
+      {/* Realtime Auto-Sync Status Banner */}
+      <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5 space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <Zap className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+              <span className="text-xs font-bold text-emerald-900">
+                Mode Realtime Aktif & Otomatis Tersinkron
+              </span>
+            </div>
+          </div>
+
+          <div className="text-[11px] font-medium text-emerald-800 flex items-center space-x-2">
+            {isAutoSyncing ? (
+              <span className="inline-flex items-center space-x-1 text-emerald-700 font-bold animate-pulse">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Menyimpan ke Supabase...</span>
+              </span>
+            ) : lastSyncedAt ? (
+              <span className="text-emerald-700">
+                Tersimpan otomatis ({lastSyncedAt.toLocaleTimeString('id-ID')})
+              </span>
+            ) : (
+              <span className="text-emerald-700">Siap sinkron otomatis</span>
+            )}
+          </div>
+        </div>
+        <p className="text-[11px] text-emerald-700/90 leading-normal">
+          Setiap perubahan data sekolah, mata pelajaran, siswa, dan nilai rapor akan langsung tersimpan secara otomatis ke Supabase secara <strong>Real-Time</strong> tanpa harus menekan tombol simpan.
+        </p>
+      </div>
+
       {/* URL Project Info */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1 font-mono">
         <div className="flex justify-between items-center text-slate-600 font-sans">
@@ -293,6 +344,14 @@ CREATE POLICY "Public semester_records" ON public.semester_records FOR ALL USING
           <span>Muat / Unduh Data dari Supabase</span>
         </button>
       </div>
+
+      {/* Auto Sync Error Notification */}
+      {syncError && !syncMessage && (
+        <div className="p-3 rounded-xl text-xs font-semibold border flex items-center space-x-2 bg-amber-50 text-amber-900 border-amber-200">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>Auto-sync Supabase: {syncError}</span>
+        </div>
+      )}
 
       {/* Sync Notification */}
       {syncMessage && (

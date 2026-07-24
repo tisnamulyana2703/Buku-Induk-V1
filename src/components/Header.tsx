@@ -1,4 +1,4 @@
-import { ArrowLeft, Home, Printer, School, UserCheck } from 'lucide-react';
+import { ArrowLeft, Home, Zap, RefreshCw } from 'lucide-react';
 import React from 'react';
 import { useApp } from '../context/AppContext';
 
@@ -8,7 +8,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
-  const { setActiveView, schoolData, academicYear, assessmentMode, setAssessmentMode } = useApp();
+  const { setActiveView, schoolData, academicYear, assessmentMode, setAssessmentMode, isAutoSyncing, isRealtimeActive } = useApp();
 
   return (
     <header className="bg-[#1e3a3f] text-white p-3 sm:p-4 shadow-md sticky top-0 z-30 flex flex-col sm:flex-row items-center justify-between gap-3 border-b-2 border-emerald-500">
@@ -24,9 +24,36 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle }) => {
         </button>
 
         <div className="border-l border-emerald-700 pl-3">
-          <h1 className="font-extrabold text-base sm:text-lg text-emerald-200 uppercase tracking-wide leading-tight">
-            {title}
-          </h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="font-extrabold text-base sm:text-lg text-emerald-200 uppercase tracking-wide leading-tight">
+              {title}
+            </h1>
+
+            {/* Realtime Status Indicator Badge */}
+            <div
+              className={`hidden md:flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                isAutoSyncing
+                  ? 'bg-amber-900/60 text-amber-200 border-amber-600'
+                  : isRealtimeActive
+                  ? 'bg-emerald-900/60 text-emerald-300 border-emerald-600'
+                  : 'bg-slate-800 text-slate-300 border-slate-700'
+              }`}
+              title="Status Integrasi Supabase Realtime"
+            >
+              {isAutoSyncing ? (
+                <>
+                  <RefreshCw className="w-3 h-3 animate-spin text-amber-300" />
+                  <span>Menyimpan...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3 text-emerald-400 fill-emerald-400" />
+                  <span>Realtime Sync</span>
+                </>
+              )}
+            </div>
+          </div>
+
           {subtitle ? (
             <p className="text-xs text-gray-300">{subtitle}</p>
           ) : (
